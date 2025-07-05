@@ -1,6 +1,6 @@
 # Shard queue
 
-A small package to share message into queue
+A small package to shard message into queue
 
 ## How to use
 
