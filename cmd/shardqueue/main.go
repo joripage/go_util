@@ -1,7 +1,6 @@
 package main
 
 import (
-	"go_util/pkg/shardqueue"
 	"log"
 	"os"
 	"os/signal"
@@ -9,6 +8,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/joripage/go_util/pkg/shardqueue"
 )
 
 func main() {
