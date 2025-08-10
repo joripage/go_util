@@ -16,7 +16,7 @@ This implementation uses `sync.Map` for thread-safe storage without manual locki
 ## Installation
 
 ```bash
-go get github.com/joripage/go_util/pkg/taskmanager
+go get github.com/joripage/go_util/pkg/task_manager
 ```
 
 ## How to use
