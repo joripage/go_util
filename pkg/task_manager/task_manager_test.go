@@ -316,3 +316,87 @@ func TestStopTask_DoesNotAffectOtherTasks(t *testing.T) {
 		t.Error("Task2 should still be running in TaskManager")
 	}
 }
+
+func TestGracefulShutdown_WaitTrue(t *testing.T) {
+	tm := NewTaskManager()
+	ctx := context.Background()
+
+	taskDone := make(chan struct{})
+	_ = tm.StartTask(ctx, "long_task", func(ctx context.Context) error {
+		<-ctx.Done()
+		time.Sleep(50 * time.Millisecond) // simulate cleanup
+		close(taskDone)
+
+		return nil
+	})
+
+	time.Sleep(20 * time.Millisecond) // ensure task started
+
+	start := time.Now()
+	tm.GracefulShutdown(true, 500*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if elapsed < 50*time.Millisecond {
+		t.Error("GracefulShutdown returned before task finished cleanup")
+	}
+
+	select {
+	case <-taskDone:
+	default:
+		t.Error("Task was not canceled properly")
+	}
+}
+
+func TestGracefulShutdown_WaitFalse(t *testing.T) {
+	tm := NewTaskManager()
+	ctx := context.Background()
+
+	taskDone := make(chan struct{})
+	_ = tm.StartTask(ctx, "long_task", func(ctx context.Context) error {
+		<-ctx.Done()
+		time.Sleep(50 * time.Millisecond) // simulate cleanup
+		close(taskDone)
+		return nil
+	})
+
+	time.Sleep(20 * time.Millisecond) // ensure task started
+
+	start := time.Now()
+	tm.GracefulShutdown(false, 500*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if elapsed >= 50*time.Millisecond {
+		t.Error("GracefulShutdown with wait=false should return immediately")
+	}
+
+	// Task should still finish eventually
+	select {
+	case <-taskDone:
+	case <-time.After(200 * time.Millisecond):
+		t.Error("Task did not finish in expected time")
+	}
+}
+
+func TestGracefulShutdown_Timeout(t *testing.T) {
+	tm := NewTaskManager()
+	ctx := context.Background()
+
+	// timeout task
+	_ = tm.StartTask(ctx, "stuck_task", func(ctx context.Context) error {
+		<-ctx.Done()
+		time.Sleep(200 * time.Millisecond) // simulate very long cleanup
+		return nil
+	})
+
+	time.Sleep(20 * time.Millisecond) // ensure task started
+
+	start := time.Now()
+	tm.GracefulShutdown(true, 50*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if elapsed < 50*time.Millisecond || elapsed > 100*time.Millisecond {
+		t.Errorf("Expected shutdown to timeout around 50ms, got %v", elapsed)
+	}
+
+	time.Sleep(200 * time.Millisecond)
+}

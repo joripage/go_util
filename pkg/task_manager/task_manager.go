@@ -5,10 +5,12 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"time"
 )
 
 type TaskManager struct {
 	tasks sync.Map // key: string, value: context.CancelFunc
+	wg    sync.WaitGroup
 }
 
 func NewTaskManager() *TaskManager {
@@ -40,9 +42,13 @@ func (s *TaskManager) StartTask(ctx context.Context, id string, fn func(ctx cont
 
 	ctxTask, cancel := context.WithCancel(ctx)
 	s.tasks.Store(id, cancel)
+	s.wg.Add(1)
 
 	go func() {
-		defer s.tasks.Delete(id)
+		defer func() {
+			s.tasks.Delete(id)
+			s.wg.Done()
+		}()
 
 		err := fn(ctxTask)
 		if errors.Is(err, context.Canceled) {
@@ -64,4 +70,29 @@ func (s *TaskManager) StopTask(id string) bool {
 		return true
 	}
 	return false
+}
+
+func (s *TaskManager) GracefulShutdown(wait bool, timeout time.Duration) {
+	// Cancel all tasks
+	s.tasks.Range(func(key, value interface{}) bool {
+		value.(context.CancelFunc)()
+		return true
+	})
+
+	if wait {
+		done := make(chan struct{})
+		go func() {
+			s.wg.Wait()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			log.Println("All tasks completed gracefully")
+		case <-time.After(timeout):
+			log.Println("Graceful shutdown timed out")
+		}
+	} else {
+		log.Println("Graceful shutdown triggered without waiting")
+	}
 }
