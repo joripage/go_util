@@ -2,6 +2,12 @@
 
 A small package to shard message into queue
 
+## Installation
+
+```bash
+go get github.com/joripage/go_util/pkg/shardqueue
+```
+
 ## How to use
 
 Code in cmd/shardqueue

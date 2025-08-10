@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/shardqueue/main.go",
+            "program": "${workspaceFolder}/cmd/task_manager/main.go",
             "args": []
         }
     ]
